@@ -13,10 +13,11 @@ CMD_INFO = "7F01609F"
 CMD_EXIT = "7A85AA55"
 last_file = "none"
 last_channel = 0
+last_type = "none"
 title_pause = ADDON.getLocalizedString(32006)
 title_caption = ADDON.getLocalizedString(32007)
 
-internet_protocols = ('http://', 'https://', 'rtsp://')
+internet_protocols = ('http://', 'https://', 'rtsp://', 'plugin://', 'pvr://')
 
 def send_yamaha_command(code,ip):
     url = f"http://{ip}/YamahaExtendedControl/v1/system/sendIrCode?code={code}"
@@ -74,14 +75,13 @@ class YamahaService(xbmc.Player):
         global last_channel
 
         theend = int(ADDON.getSetting("dsp_mode"))
-        
         if theend > 0:
+            last_channel = 0
+            last_file = "none"
+        
             self.pausewhilestopped(10)
         
             if not self.isPlaying():
-                last_channel = 0
-                last_file = "none"
-                
                 YIP = ADDON.getSetting('yamaha_ip')
                 got_multicast = ADDON.getSettingBool('got_multicast')
                 
@@ -111,6 +111,7 @@ class YamahaService(xbmc.Player):
     def onAVStarted(self):
         global last_file
         global last_channel
+        global last_type
         
         paused = False
         YIP = ADDON.getSetting('yamaha_ip')
@@ -142,9 +143,13 @@ class YamahaService(xbmc.Player):
         
         #xbmc.log(f"YAMAHA-SERVICE: Got Metadata!", xbmc.LOGINFO)
         if channels:
-            if int(channels) != last_channel :
+            xbmc.log(f"YAMAHA-SERVICE: {channels} audio channels found : {retries} retries", xbmc.LOGINFO)
+            curr_file = self.getPlayingFile()   #xbmc.getInfoLabel('Player.Filename')
+            
+            if (int(channels) != last_channel) or (curr_file[:10].lower() != last_type):
                 last_channel = int(channels)
-                xbmc.log(f"YAMAHA-SERVICE: {channels} audio channels found : {retries} retries", xbmc.LOGINFO)
+                last_type = curr_file[0:10].lower()
+                xbmc.log(f"YAMAHA-SERVICE: Contacting Yamaha - # of channels changed or source changed.", xbmc.LOGINFO)
                 if int(channels) <= 2:
                     if got_multicast :
                         if self.isPlayingVideo():
@@ -167,8 +172,9 @@ class YamahaService(xbmc.Player):
                     else :
                         send_yamaha_oldschool(3,YIP)
                         xbmc.log("YAMAHA-SERVICE: YNC - Mode: Straight", xbmc.LOGINFO)
+            else:
+                xbmc.log(f"YAMAHA-SERVICE: Same Same - Not touching Yamaha", xbmc.LOGINFO)
         
-            curr_file = self.getPlayingFile()   #xbmc.getInfoLabel('Player.Filename')
             xbmc.log(f"YAMAHA-SERVICE: Path/File - {curr_file}", xbmc.LOGINFO)
             if self.isPlayingVideo() and curr_file != last_file :
                 if PAUSE > 0 and not curr_file.lower().startswith(internet_protocols):
