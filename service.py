@@ -53,8 +53,6 @@ def set_dsp(html, YIP, mode, mcast):
     cmode = 0
     cmd = ""
     
-    #xbmc.log(f"YAMAHA-SERVICE set_dsp : {fmode(mode)} {mode}", xbmc.LOGERROR)
-    
     if html:
         if "sound_program" in html:
             data = json.loads(html)
@@ -67,10 +65,13 @@ def set_dsp(html, YIP, mode, mcast):
                 elif sound_prog == fmode(3):
                     cmode = 3
                 
-                xbmc.log(f"YAMAHA-SERVICE Current DSP mode : {fmode(cmode)}", xbmc.LOGERROR)
+                xbmc.log(f"YAMAHA-SERVICE: Yamaha Contacted - Current DSP mode : {fmode(cmode)}", xbmc.LOGINFO)
+    
+    if cmode == 0:
+        xbmc.log(f"YAMAHA-SERVICE: Unable to fetch current DSP mode from Yamaha.", xbmc.LOGERROR)
     
     if mode >= 1 and mode <= 3 and not cmode == mode:
-        xbmc.log(f"YAMAHA-SERVICE Multicast: {mcast} - Setting DSP mode: {fmode(mode)}", xbmc.LOGERROR)
+        xbmc.log(f"YAMAHA-SERVICE: Multicast: {mcast} - Setting DSP mode: {fmode(mode)}", xbmc.LOGINFO)
         if mcast:
             if mode == 1 :
                 cmd = CMD_7CH_STEREO                    
@@ -83,7 +84,7 @@ def set_dsp(html, YIP, mode, mcast):
         else:
             send_yamaha_oldschool(mode,YIP)
     elif mode >=1 and mode <=3:
-        xbmc.log(f"YAMAHA-SERVICE DSP mode GOOD - Leaving alone.", xbmc.LOGERROR)
+        xbmc.log(f"YAMAHA-SERVICE: DSP already where we want - Leaving alone.", xbmc.LOGINFO)
         
 def send_yamaha_command(code,ip):
     url = f"http://{ip}/YamahaExtendedControl/v1/system/sendIrCode?code={code}"
@@ -91,7 +92,7 @@ def send_yamaha_command(code,ip):
         with urllib.request.urlopen(url, timeout=2) as r:
             pass
     except Exception as e:
-        xbmc.log(f"YAMAHA-SERVICE {ip} Error: {e}", xbmc.LOGERROR)
+        xbmc.log(f"YAMAHA-SERVICE: {ip} Error: {e}", xbmc.LOGERROR)
 
 def send_yamaha_oldschool(mode,ip):
     URL = f"http://{ip}/YamahaRemoteControl/ctrl"
@@ -110,7 +111,7 @@ def send_yamaha_oldschool(mode,ip):
         with urllib.request.urlopen(req) as response:
             pass
     except Exception as e:
-        xbmc.log(f"YAMAHA-SERVICE {ip} Error: {e}", xbmc.LOGERROR)
+        xbmc.log(f"YAMAHA-SERVICE: {ip} Error: {e}", xbmc.LOGERROR)
 
 class YamahaService(xbmc.Player):
     def __init__(self):
@@ -164,7 +165,7 @@ class YamahaService(xbmc.Player):
                         send_yamaha_oldschool(theend,YIP)
                         xbmc.log(f"YAMAHA-SERVICE: {event_type} : YNC - Set Return Mode : {str(theend)}", xbmc.LOGINFO)
                 except Exception as e:
-                    xbmc.log(f"YAMAHA-CLEANUP-ERROR: {e}", xbmc.LOGERROR)
+                    xbmc.log(f"YAMAHA-SERVICE: ERROR: {e}", xbmc.LOGERROR)
     
     def onPlayBackStopped(self):
         self._cleanup_receiver("STOPPED")
@@ -208,35 +209,23 @@ class YamahaService(xbmc.Player):
             xbmc.log(f"YAMAHA-SERVICE: {channels} audio channels found : {retries} retries", xbmc.LOGINFO)
             curr_file = self.getPlayingFile()   #xbmc.getInfoLabel('Player.Filename')
             
-            xbmc.log(f"YAMAHA-SERVICE: Contacting Yamaha - # of channels changed or source changed.", xbmc.LOGINFO)
+            #xbmc.log(f"YAMAHA-SERVICE: Contacting Yamaha - # of channels changed or source changed.", xbmc.LOGINFO)
             if int(channels) <= 2:
                 if got_multicast :
                     if self.isPlayingVideo():
                         get_set_dsp(YIP, 2, got_multicast)
-                        #send_yamaha_command(CMD_SURROUND,YIP)
-                        #xbmc.log("YAMAHA-SERVICE: Multicast - Mode: Surround", xbmc.LOGINFO)
                     else:
                         get_set_dsp(YIP, 1, got_multicast)
-                        #send_yamaha_command(CMD_7CH_STEREO,YIP)
-                        #xbmc.log("YAMAHA-SERVICE: Multicast - Mode: 7ch Stereo", xbmc.LOGINFO)
                 else :
                     if self.isPlayingVideo():
                         get_set_dsp(YIP, 2, got_multicast)
-                        #send_yamaha_oldschool(2,YIP)
-                        #xbmc.log("YAMAHA-SERVICE: YNC - Mode: Surround", xbmc.LOGINFO)
                     else:
                         get_set_dsp(YIP, 1, got_multicast)
-                        #send_yamaha_oldschool(1,YIP)
-                        #xbmc.log("YAMAHA-SERVICE: YNC - Mode: 7ch Stereo", xbmc.LOGINFO)
             else:
                 if got_multicast :
                     get_set_dsp(YIP, 3, got_multicast)
-                    #send_yamaha_command(CMD_STRAIGHT,YIP)
-                    #xbmc.log("YAMAHA-SERVICE: Multicast - Mode: Straight", xbmc.LOGINFO)
                 else :
                     get_set_dsp(YIP, 3, got_multicast)
-                    #send_yamaha_oldschool(3,YIP)
-                    #xbmc.log("YAMAHA-SERVICE: YNC - Mode: Straight", xbmc.LOGINFO)
         
             xbmc.log(f"YAMAHA-SERVICE: Path/File - {curr_file}", xbmc.LOGINFO)
             if self.isPlayingVideo() and curr_file != last_file :
