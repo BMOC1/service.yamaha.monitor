@@ -22,13 +22,25 @@ internet_protocols = ('http://', 'https://', 'rtsp://', 'plugin://', 'pvr://')
 
 def get_set_dsp(YIP, mode, mcast):
     def run():
-        dsp_url = f"http://{YIP}/YamahaExtendedControl/v1/main/getStatus"
+        if mcast:
+            dsp_url = f"http://{YIP}/YamahaExtendedControl/v1/main/getStatus"
+        else:
+            dsp_url = f"http://{YIP}/YamahaRemoteControl/ctrl"
         try:
-            # Setting a timeout is critical for network services
-            with urllib.request.urlopen(dsp_url, timeout=5) as response:
-                # Read and decode bytes to string (UTF-8)
-                html = response.read().decode('utf-8')
-                set_dsp(html, YIP, mode, mcast)
+            if mcast:
+                # Setting a timeout is critical for network services
+                with urllib.request.urlopen(dsp_url, timeout=5) as response:
+                    # Read and decode bytes to string (UTF-8)
+                    html = response.read().decode('utf-8')
+                    set_dsp(html, YIP, mode, mcast)
+            else:
+                post = """<YAMAHA_AV cmd="GET"><Main_Zone><Basic_Status>GetParam</Basic_Status></Main_Zone></YAMAHA_AV>"""
+                req = urllib.request.Request(dsp_url, data=post.encode('utf-8'), method='POST')
+                req.add_header('Content-Type', 'text/xml; charset=utf-8')
+                with urllib.request.urlopen(req) as response:
+                    html = response.read().decode('utf-8')
+                    set_dsp(html, YIP, mode, mcast)
+            
         except Exception as e:
             # Catch timeouts, 404s, or connection refused errors
             xbmc.log(f"YAMAHA-SERVICE: urllib error: {str(e)}", xbmc.LOGERROR)
@@ -54,20 +66,30 @@ def set_dsp(html, YIP, mode, mcast):
     cmd = ""
     
     if html:
-        if "sound_program" in html:
-            data = json.loads(html)
-            sound_prog = data.get("sound_program")
-            if sound_prog:
-                if sound_prog == fmode(1):
-                    cmode = 1
-                elif sound_prog == fmode(2):
-                    cmode = 2
-                elif sound_prog == fmode(3):
-                    cmode = 3
-                
-                xbmc.log(f"YAMAHA-SERVICE: Yamaha Contacted - Current DSP mode : {fmode(cmode)}", xbmc.LOGINFO)
-    
-    if cmode == 0:
+        #xbmc.log(f"YAMAHA-SERVICE: Return html : {html}", xbmc.LOGINFO)
+        if mcast:
+            if "sound_program" in html:
+                data = json.loads(html)
+                sound_prog = data.get("sound_program")
+                if sound_prog:
+                    if sound_prog == fmode(1):
+                        cmode = 1
+                    elif sound_prog == fmode(2):
+                        cmode = 2
+                    elif sound_prog == fmode(3):
+                        cmode = 3
+        else:
+            #not multicast
+            if "<Straight>On</Straight>" in html:
+                cmode = 3
+            elif "<Sound_Program>Surround Decoder</Sound_Program>" in html:
+                cmode = 2
+            elif "<Sound_Program>7ch Stereo</Sound_Program>" in html:
+                cmode = 1
+                    
+    if cmode >=1 and cmode <=3:
+        xbmc.log(f"YAMAHA-SERVICE: Yamaha Contacted - Multicast:{mcast} - Current DSP mode : {fmode(cmode)}", xbmc.LOGINFO)
+    else:
         xbmc.log(f"YAMAHA-SERVICE: Unable to fetch current DSP mode from Yamaha.", xbmc.LOGERROR)
     
     if mode >= 1 and mode <= 3 and not cmode == mode:
