@@ -14,7 +14,7 @@ Optional AVinfo screen display (multicast receivers)
 
 Optional ability to return to a mode after playback finished.
 
-<img width="1920" height="1080" alt="screenshot00003" src="https://github.com/user-attachments/assets/f873a30f-cd7e-4027-8296-c7e02a9c01e1" />
+<img width="1920" height="1080" alt="screenshot00000" src="https://github.com/user-attachments/assets/18886a93-e47f-4f1b-ac0e-266995fe0eec" />
 
 Revisions
 =========
