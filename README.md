@@ -16,3 +16,7 @@ Optional ability to return to a mode after playback finished.
 
 <img width="1920" height="1080" alt="screenshot00003" src="https://github.com/user-attachments/assets/f873a30f-cd7e-4027-8296-c7e02a9c01e1" />
 
+Revisions
+=========
+
+5/10/2026 - Added ability to skip pausing if video FPS is 29.97 , 30 or 60 as this does not cause some TV's to go through tiresome screen blackout and refresh.  In another words, don't pause if i don't need to.
