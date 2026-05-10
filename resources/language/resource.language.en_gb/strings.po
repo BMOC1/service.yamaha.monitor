@@ -63,3 +63,7 @@ msgstr ""
 msgctxt "#32012"
 msgid "Straight Mode"
 msgstr ""
+
+msgctxt "#32013"
+msgid "No pausing needed for 29.97, 30, 60 FPS"
+msgstr ""

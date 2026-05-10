@@ -50,6 +50,15 @@
         	</control>
         </setting>
 
+        <setting id="pause_skip" type="boolean" label="32013" help="">
+	        <level>0</level>
+	        <default>false</default>
+	        <control type="toggle"/>
+        	<dependencies>
+                <dependency setting="video_pause" type="enable" operator="gt">0</dependency>
+            </dependencies>
+        </setting>
+
         <setting id="dsp_mode" type="integer" label="32008" help="">
           <level>0</level>
           <default>0</default>

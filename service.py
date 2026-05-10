@@ -204,12 +204,15 @@ class YamahaService(xbmc.Player):
         SHOW_ONSCREEN = (ADDON.getSettingBool('show_onscreen') and got_multicast)
         PAUSE = int(ADDON.getSetting('video_pause') or 0)
         ONSCREEN = int(ADDON.getSetting('screen_seconds') or 0)
+        SKIPFPS = ADDON.getSettingBool('pause_skip')
 
         #xbmc.log(f"YAMAHA-SERVICE: {YIP} : ShowScreen: {SHOW_ONSCREEN} Wait: {PAUSE} Show: {ONSCREEN}", xbmc.LOGINFO)
         xbmc.log("YAMAHA-SERVICE: Playback started, fetching audio channel info", xbmc.LOGINFO)
         
         channels = ""
         retries = 0
+        fps = 0.0
+        
         max_retries = 60 # Wait up to 15 seconds for spin-up
         
         while not channels and retries < max_retries:
@@ -217,8 +220,14 @@ class YamahaService(xbmc.Player):
             if xbmc.Monitor().abortRequested():
                 return
             
+            #xbmc.sleep(250) # Wait 1 second before checking again
             if self.isPlayingVideo():    
                 channels = xbmc.getInfoLabel('VideoPlayer.AudioChannels')
+                
+                if SKIPFPS:
+                    fps = xbmc.getInfoLabel('Player.Process(VideoFPS)')
+                    fps = round(float(fps), 2)
+                    xbmc.log(f"YAMAHA-SERVICE: Video FPS:{str(fps)}", xbmc.LOGINFO)
             else:
                 channels = 2
                 
@@ -226,7 +235,6 @@ class YamahaService(xbmc.Player):
                 retries += 1
                 xbmc.sleep(250) # Wait 1 second before checking again
         
-        #xbmc.log(f"YAMAHA-SERVICE: Got Metadata!", xbmc.LOGINFO)
         if channels:
             xbmc.log(f"YAMAHA-SERVICE: {channels} audio channels found : {retries} retries", xbmc.LOGINFO)
             curr_file = self.getPlayingFile()   #xbmc.getInfoLabel('Player.Filename')
@@ -251,16 +259,19 @@ class YamahaService(xbmc.Player):
         
             xbmc.log(f"YAMAHA-SERVICE: Path/File - {curr_file}", xbmc.LOGINFO)
             if self.isPlayingVideo() and curr_file != last_file :
-                if PAUSE > 0 and not curr_file.lower().startswith(internet_protocols):
-                    xbmc.log(f"YAMAHA-SERVICE: Pausing for {PAUSE} seconds", xbmc.LOGINFO)
-                    self.pause()
-                    secs = self.getTime()
-                    if secs < 60 : self.seekTime(0.0)
-                    paused = True
-                    xbmcgui.Dialog().notification(title_pause,title_caption, xbmcgui.NOTIFICATION_INFO, PAUSE*1000)
-                    self.pausewhileplay(PAUSE)
+                if not SKIPFPS or fps not in [29.97, 30.0, 60.0]:
+                    if PAUSE > 0 and not curr_file.lower().startswith(internet_protocols):
+                        xbmc.log(f"YAMAHA-SERVICE: Pausing for {PAUSE} seconds", xbmc.LOGINFO)
+                        self.pause()
+                        secs = self.getTime()
+                        if secs < 60 : self.seekTime(0.0)
+                        paused = True
+                        xbmcgui.Dialog().notification(title_pause,title_caption, xbmcgui.NOTIFICATION_INFO, PAUSE*1000)
+                        self.pausewhileplay(PAUSE)
+                    else:
+                        xbmc.log(f"YAMAHA-SERVICE: Skipping pause - No Pause set or Internet Stream", xbmc.LOGINFO)
                 else:
-                    xbmc.log(f"YAMAHA-SERVICE: Skipping pause - No Pause set or Internet Stream", xbmc.LOGINFO)
+                    xbmc.log(f"YAMAHA-SERVICE: Skipping pause - FPS:{str(fps)} doesn't require it.", xbmc.LOGINFO)
                     
                 if self.isPlaying():
                     if paused and xbmc.getCondVisibility("Player.Paused"): 
